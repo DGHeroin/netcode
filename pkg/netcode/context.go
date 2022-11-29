@@ -1,21 +1,24 @@
 package netcode
 
 import (
+    "container/list"
     "log"
     "netcode/lua"
     "netcode/pkg/utils"
+    "sync"
     "time"
 )
 
 func Inject(L *lua.State) (*Context, error) {
+    mqSize := utils.EnvGetInt("mq_len", 5000)
     c := &Context{
         L:           L,
         values:      make(map[string]interface{}),
         services:    make(map[string]*ncService),
-        serviceChan: make(chan *ncService, utils.EnvGetInt("mq_len", 1000)),
-        mailChan:    make(chan *ncMail, utils.EnvGetInt("mq_len", 1000)),
-        funcChan:    make(chan func(), utils.EnvGetInt("mq_len", 1000)),
-        replyChan:   make(chan *ncReply, utils.EnvGetInt("mq_len", 1000)),
+        serviceChan: make(chan *ncService, mqSize),
+        mails:       list.New(),
+        funcChan:    make(chan func(), mqSize),
+        replyChan:   make(chan *ncReply, mqSize),
         closeChan:   make(chan bool),
     }
     L.RegisterFunction("netcode_start", c.start)
@@ -43,8 +46,9 @@ type (
         tickLastTime time.Time
         replyFuncRef int
         services     map[string]*ncService
+        mailsMu      sync.Mutex
+        mails        *list.List
         serviceChan  chan *ncService
-        mailChan     chan *ncMail
         replyChan    chan *ncReply
         funcChan     chan func()
         closeChan    chan bool
@@ -56,7 +60,6 @@ type (
         self int
     }
     ncMail struct {
-        // wg      sync.WaitGroup
         mailId  int
         service string
         args    [][]byte
@@ -83,7 +86,7 @@ func (c *Context) tickTime() {
         L.PushInteger(dt)
         err := L.Call(2, 0)
         if err != nil {
-            panic(err)
+
         }
     }
 }
@@ -94,7 +97,7 @@ func (c *Context) loadService() {
     }
 }
 func (c *Context) EnqueueAction(fn func()) {
-    if len(c.mailChan) == cap(c.mailChan) {
+    if len(c.funcChan) == cap(c.funcChan) {
         go func() {
             c.funcChan <- fn
         }()
@@ -108,14 +111,10 @@ func (c *Context) IncomingMail(id int, service string, args [][]byte) *ncMail {
         service: service,
         args:    args,
     }
+    c.mailsMu.Lock()
+    defer c.mailsMu.Unlock()
 
-    if len(c.mailChan) == cap(c.mailChan) { // 如果超出长度
-        go func() {
-            c.mailChan <- mail
-        }()
-        return mail
-    }
-    c.mailChan <- mail
+    c.mails.PushBack(mail)
 
     return mail
 }
@@ -125,14 +124,14 @@ func (c *Context) IncomingReply(id int, payload [][]byte, err error) {
         args:   payload,
         err:    err,
     }
-
-    if len(c.replyChan) == cap(c.replyChan) { // 如果超出长度
-        go func() {
-            c.replyChan <- reply
-        }()
-        return
-    }
-    c.replyChan <- reply
+    c.doReply(reply)
+    // if len(c.replyChan) == cap(c.replyChan) { // 如果超出长度
+    //     go func() {
+    //         c.replyChan <- reply
+    //     }()
+    //     return
+    // }
+    // c.replyChan <- reply
 }
 func (c *Context) registerService(n *ncService) {
     if len(c.serviceChan) == cap(c.serviceChan) { // 如果超出长度
@@ -166,7 +165,15 @@ func (c *Context) doReply(r *ncReply) {
         }
         err := L.Call(sz+2, 0)
         if err != nil {
-            panic(err)
+
         }
+    }
+}
+
+func (c *Context) tickMail(mails *list.List) {
+    for it := mails.Front(); it != nil; it = it.Next() {
+        m := it.Value.(*ncMail)
+        payload, err := c.dispatch(m)
+        c.IncomingReply(m.mailId, payload, err)
     }
 }

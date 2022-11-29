@@ -2,7 +2,6 @@ package netcode
 
 import (
     "context"
-    "fmt"
     "net"
     "netcode/lua"
     "netcode/pkg/rpc"
@@ -74,7 +73,6 @@ func (c *Context) rpcServe(L *lua.State) int {
         var err error
         defer func() {
             if e := recover(); e != nil {
-
             }
             err = ln.Close()
             if err != nil {
@@ -84,17 +82,12 @@ func (c *Context) rpcServe(L *lua.State) int {
             var wg sync.WaitGroup
             wg.Add(1)
             c.EnqueueAction(func() {
-                // defer wg.Done()
+                defer wg.Done()
                 m := &ncMail{
-                    mailId:  0,
                     service: service,
                     args:    args,
                 }
-                reply, errBytes := c.dispatch(m)
-                result = reply
-                if errBytes != nil {
-                    err = fmt.Errorf("%s", errBytes)
-                }
+                result, err = c.dispatch(m)
             })
             wg.Wait()
             return

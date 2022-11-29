@@ -1,12 +1,12 @@
 netcode.start('main', function()
     netcode.log('first init:', os.time(), netcode.frameCount)
 --     netcode.on_tick(function()
---         netcode.log(netcode.time, netcode.deltaTime, netcode.frameCount)
+--         print(netcode.time, netcode.deltaTime, netcode.frameCount)
 --     end)
 
 --     local updater = netcode.add_updater()
 --     updater.add(function()
---        netcode.log('updater', netcode.time, netcode.frameCount)
+--        print('updater', netcode.time, netcode.frameCount)
 --     end)
 
     netcode.call('login-service', function(cmd)

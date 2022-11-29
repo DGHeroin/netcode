@@ -1,6 +1,7 @@
 package netcode
 
 import (
+    "container/list"
     "context"
     "fmt"
     "log"
@@ -11,7 +12,7 @@ import (
 )
 
 func (c *Context) Loop() {
-    tickPeriod := time.Second
+    tickPeriod := time.Millisecond
     if str := os.Getenv("tick_period"); str != "" {
         if val, err := strconv.Atoi(str); err == nil {
             tickPeriod = time.Millisecond * time.Duration(val)
@@ -22,13 +23,18 @@ func (c *Context) Loop() {
         select {
         case <-ticker.C: // 按帧率tick
             c.tickTime()
+
+            c.mailsMu.Lock()
+            mails := c.mails
+            c.mails = list.New()
+            c.mailsMu.Unlock()
+
+            c.tickMail(mails)
+
         case v := <-c.serviceChan:
             c.boot(v)
         case fn := <-c.funcChan:
             fn()
-        case m := <-c.mailChan:
-            payload, err := c.dispatch(m)
-            c.IncomingReply(m.mailId, payload, err)
         case r := <-c.replyChan:
             c.doReply(r)
         case <-c.closeChan:
