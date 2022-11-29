@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package pb;
+option go_package = ".;pb";
+
+service RService{
+  rpc Request (Message) returns (Message) {}
+}
+
+message Message {
+  repeated bytes args = 1;
+}

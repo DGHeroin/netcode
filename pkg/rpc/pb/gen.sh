@@ -1,0 +1,1 @@
+protoc -I . request.proto --go_out=plugins=grpc:.
