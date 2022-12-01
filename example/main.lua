@@ -1,5 +1,5 @@
 netcode.start('main', function()
-    netcode.log('first init:', os.time(), netcode.frameCount)
+    --netcode.log('first init:', os.time(), netcode.frameCount)
 --     netcode.on_tick(function()
 --         print(netcode.time, netcode.deltaTime, netcode.frameCount)
 --     end)
@@ -18,7 +18,7 @@ netcode.start('main', function()
     end, 'ping-pong', 'yes yes yes', 'ccc')
     netcode.call('login-service',function(cmd)
         print('再见', table.tostring(cmd))
---         netcode.exit()
+         --netcode.exit()
     end, 'bye')
 
     local self = {}
@@ -27,3 +27,4 @@ netcode.start('main', function()
     end
     return self
 end)
+

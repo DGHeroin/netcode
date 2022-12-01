@@ -2,7 +2,9 @@ package rpc
 
 import (
     "context"
+    "crypto/tls"
     "google.golang.org/grpc"
+    "google.golang.org/grpc/credentials"
     "google.golang.org/grpc/credentials/insecure"
     "netcode/pkg/rpc/pb"
 )
@@ -35,6 +37,14 @@ func (c *client) Request(ctx context.Context, args ...[]byte) ([][]byte, error) 
 
 func Dial(address string) (Client, error) {
     conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+    if err != nil {
+        return nil, err
+    }
+    c := pb.NewRServiceClient(conn)
+    return &client{cli: c, conn: conn}, nil
+}
+func DialTLS(address string, config *tls.Config) (Client, error) {
+    conn, err := grpc.Dial(address, grpc.WithTransportCredentials(credentials.NewTLS(config)))
     if err != nil {
         return nil, err
     }

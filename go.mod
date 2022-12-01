@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/DGHeroin/lua.go v0.1.1
 	github.com/spf13/cobra v1.6.1
+	go.etcd.io/bbolt v1.3.6
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1
 )

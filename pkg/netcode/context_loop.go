@@ -12,6 +12,9 @@ import (
 )
 
 func (c *Context) Loop() {
+    defer func() {
+        c.release()
+    }()
     tickPeriod := time.Millisecond
     if str := os.Getenv("tick_period"); str != "" {
         if val, err := strconv.Atoi(str); err == nil {
@@ -35,8 +38,6 @@ func (c *Context) Loop() {
             c.boot(v)
         case fn := <-c.funcChan:
             fn()
-        case r := <-c.replyChan:
-            c.doReply(r)
         case <-c.closeChan:
             return
         }

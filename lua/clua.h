@@ -11,7 +11,7 @@
 #include "c-lib.h"
 
 void c_initstate(lua_State* L);
-
+void c_pop(lua_State* L,int n);
 // go function
 void c_pushgofunction(lua_State* L, unsigned int fid);
 int c_is_gofunction(lua_State *L, int n);

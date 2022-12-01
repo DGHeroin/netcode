@@ -6,6 +6,9 @@ import (
     "io/ioutil"
     "netcode/lua"
     "netcode/pkg/netcode"
+    "os"
+    "os/signal"
+    "syscall"
 )
 
 var (
@@ -49,6 +52,21 @@ func runFile(filename string) error {
             return
         }
     })
+
+    {
+        go func() {
+            sigs := make(chan os.Signal, 1)
+            signal.Notify(sigs, syscall.SIGINT,
+                syscall.SIGILL,
+                syscall.SIGFPE,
+                syscall.SIGSEGV,
+                syscall.SIGTERM,
+                syscall.SIGABRT, )
+            <-sigs
+            ctx.Close()
+        }()
+    }
+
     ctx.Loop()
     return err
 }

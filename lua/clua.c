@@ -57,6 +57,11 @@ void c_initstate(lua_State* L) {
         lua_setglobal(L, "traceback");
     }
 }
+
+void c_pop(lua_State* L, int n) {
+    lua_pop(L, n);
+}
+
 void c_pushgofunction(lua_State* L, unsigned int fid) {
     unsigned int* fidptr = (unsigned int *)lua_newuserdata(L, sizeof(unsigned int));
     *fidptr = fid;

@@ -309,14 +309,21 @@ func (L *State) StackTrace() []StackEntry {
 func (L *State) OpenLibs() {
     C.luaL_openlibs(L.s)
 }
-func (L *State) register(f interface{}) uint32 {
+func (L *State) register(f interface{}) (id uint32) {
     L.registerM.Lock()
     defer L.registerM.Unlock()
-    id := atomic.AddUint32(&L.registryId, 1)
-    if id == 0 { // 完成一次uint32
+
+    for {
         id = atomic.AddUint32(&L.registryId, 1)
+        if _, ok := L.registry[id]; ok {
+            continue
+        }
+        if id == 0 { // 完成一次uint32
+            id = atomic.AddUint32(&L.registryId, 1)
+        }
+        L.registry[id] = f
+        break
     }
-    L.registry[id] = f
     return id
 }
 func (L *State) getRegister(id uint32) interface{} {

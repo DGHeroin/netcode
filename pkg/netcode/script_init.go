@@ -97,11 +97,39 @@ function netcode.exit()
     nc_exit()
 end
 
-function netcode.rpc_serve(name, addr)
-    return nc_rpc_serve(name, addr)
+function netcode.rpc_serve(...)
+    return nc_rpc_serve(...)
 end
 function netcode.rpc_client(...)
     return nc_rpc_client(...)
+end
+
+-- kvdb
+local nc_kv_open=netcode_kv_open
+local nc_kv_get=netcode_kv_get
+local nc_kv_set=netcode_kv_set
+local nc_kv_close=netcode_kv_close
+
+netcode_kv_open = nil
+netcode_kv_get = nil
+netcode_kv_set = nil
+netcode_kv_close = nil
+
+function netcode.kvdb(name)
+    local errMsg = nc_kv_open(name)
+    if errMsg ~= nil then return nil end
+
+    local self = {}
+    function self.get(bucket, key)
+        return nc_kv_get(name, bucket, key)
+    end
+    function self.set(bucket, key, value)
+        return nc_kv_set(name, bucket, key, value)
+    end
+    function self.close(bucket, key, value)
+        return nc_kv_close(name)
+    end
+    return self
 end
 
 -- utils

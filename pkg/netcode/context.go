@@ -2,6 +2,7 @@ package netcode
 
 import (
     "container/list"
+    bolt "go.etcd.io/bbolt"
     "log"
     "netcode/lua"
     "netcode/pkg/utils"
@@ -18,7 +19,6 @@ func Inject(L *lua.State) (*Context, error) {
         serviceChan: make(chan *ncService, mqSize),
         mails:       list.New(),
         funcChan:    make(chan func(), mqSize),
-        replyChan:   make(chan *ncReply, mqSize),
         closeChan:   make(chan bool),
     }
     L.RegisterFunction("netcode_start", c.start)
@@ -28,6 +28,10 @@ func Inject(L *lua.State) (*Context, error) {
     L.RegisterFunction("netcode_exit", c.exit)
     L.RegisterFunction("netcode_rpc_serve", c.rpcServe)
     L.RegisterFunction("netcode_rpc_client", c.rpcClient)
+    L.RegisterFunction("netcode_kv_open", c.storageOpen)
+    L.RegisterFunction("netcode_kv_get", c.storageGet)
+    L.RegisterFunction("netcode_kv_set", c.storageSet)
+    L.RegisterFunction("netcode_kv_close", c.storageClose)
 
     err := L.DoString(_context_init_script)
     if err != nil {
@@ -49,7 +53,6 @@ type (
         mailsMu      sync.Mutex
         mails        *list.List
         serviceChan  chan *ncService
-        replyChan    chan *ncReply
         funcChan     chan func()
         closeChan    chan bool
         values       map[string]interface{}
@@ -125,13 +128,6 @@ func (c *Context) IncomingReply(id int, payload [][]byte, err error) {
         err:    err,
     }
     c.doReply(reply)
-    // if len(c.replyChan) == cap(c.replyChan) { // 如果超出长度
-    //     go func() {
-    //         c.replyChan <- reply
-    //     }()
-    //     return
-    // }
-    // c.replyChan <- reply
 }
 func (c *Context) registerService(n *ncService) {
     if len(c.serviceChan) == cap(c.serviceChan) { // 如果超出长度
@@ -175,5 +171,14 @@ func (c *Context) tickMail(mails *list.List) {
         m := it.Value.(*ncMail)
         payload, err := c.dispatch(m)
         c.IncomingReply(m.mailId, payload, err)
+    }
+}
+
+func (c *Context) release() {
+    for _, p := range c.values {
+        switch obj := p.(type) {
+        case *bolt.DB:
+            _ = obj.Close()
+        }
     }
 }
